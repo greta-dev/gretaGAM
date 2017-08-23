@@ -25,6 +25,8 @@
 #'   must be specified by the user. The smoothing parameters may either be a
 #'   numeric vector or a greta array (which could be a variable).
 #'
+#' @param newdata new data to use for predictions etc (this probably doesn't likve here but is supplied for now for testing)
+#'
 #' @details Only the right hand side of \code{formula} will be used to define
 #'   the smooth terms. The user must complete the gam model by specifying the
 #'   link and likelihood term in greta. A warning will be issued if the formula
@@ -43,8 +45,42 @@
 #'   MCMC to carry out this integration - it does not make sense to do maximum
 #'   likelihood optimisation on a greta model that uses \code{smooths}.
 #'
-#' @importFrom mgcv gam
-smooths <- function (formula, data = list(), knots = NULL, sp = NULL) {
+#'
+#' @examples
+#' \dontrun{
+#' x <- runif(n, 0, 10)
+#' f <- function(x) {
+#'   sin(x * 2) + 1.6 * (x < 3) - 1.4 * (x > 7)
+#' }
+#' y <- f(x) + rnorm(n, 0, 0.3)
+#' x_plot <- seq(0, 10, length.out = 200)
+#'
+#' library(greta)
+#' library(gretaGAM)
+#'
+#' jg <- smooths(~s(x), data=data.frame(x=x), newdata=data.frame(x=x_plot))
+#'
+#' k <- 20
+#'
+#' z <- with(jg, X %*% betas)
+#'
+#' distribution(y) = normal(z, 0.3)# sd)
+#'
+#'
+#' z_pred <- with(jg, X_pred %*% betas)
+#'
+#' # build model
+#' m <- model(z_pred)
+#' draws <- mcmc(m, n_samples = 100)
+#'
+#'
+#' plot(x,y, pch=19, cex=0.4, col="red")
+#' apply(draws[[1]], 1, lines, x=x_plot, col="blue")
+#' points(x,y, pch=19, cex=0.4, col="red")
+#'
+#'}
+#' @export
+smooths <- function (formula, data = list(), knots = NULL, sp = NULL, newdata) {
 
   if (length(formula) > 2) {
     warning ("the formula has a left hand side, only the right hand side ",
@@ -52,10 +88,9 @@ smooths <- function (formula, data = list(), knots = NULL, sp = NULL) {
              call. = FALSE)
   }
 
-  gam <- mgcv::gam(formula = formula,
-                   knots = knots,
-                   fit = FALSE)
 
-  jagam2greta(gam, sp)
+  jg <- jagam2greta(formula,
+                    data=data, newdata=newdata)
 
+  return(jg)
 }
